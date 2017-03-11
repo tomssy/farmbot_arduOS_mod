@@ -338,14 +338,14 @@ var err error
 	err = stub.PutState("_debug1", jsonAsBytes)
 
 	for i:=3; i < len(args); i++ {												//create and append each willing trade
-		Temperature, err = strconv.Atoi(args[i + 1])
+		Temperature, err := strconv.Atoi(args[i + 1])
 		if err != nil {
 			msg := "is not a numeric string " + args[i + 1]
 			fmt.Println(msg)
 			return nil, errors.New(msg)
 		}
 		
-		Weather_now = Weather{}
+		Weather_now := Weather{}
 		Weather_now.Name = args[i]
 		Weather.Temperature =  Temperature
 		fmt.Println("! created weather: " + args[i])
