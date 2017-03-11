@@ -35,7 +35,7 @@ func (t *SimpleChaincode) InitW(stub shim.ChaincodeStubInterface, function strin
 		return nil, errors.New("Incorrect number of arguments. Expecting 1")
 	}
 
-	err := stub.PutState("hello_world", []byte(args[0]))
+	err := stub.PutState("orig_test", []byte(args[0]))
 	if err != nil {
 		return nil, err
 	}
@@ -48,10 +48,10 @@ func (t *SimpleChaincode) InvokeW(stub shim.ChaincodeStubInterface, function str
 	fmt.Println("invoke is running " + function)
 
 	// Handle different functions
-	if function == "init" {
-		return t.Init(stub, "init", args)
-	} else if function == "write" {
-		return t.write(stub, args)
+	if function == "initW" {
+		return t.InitW(stub, "initW", args)
+	} else if function == "writeW" {
+		return t.writeW(stub, args)
 	}
 	fmt.Println("invoke did not find func: " + function)
 
@@ -63,8 +63,8 @@ func (t *SimpleChaincode) QueryW(stub shim.ChaincodeStubInterface, function stri
 	fmt.Println("query is running " + function)
 
 	// Handle different functions
-	if function == "read" { //read a variable
-		return t.read(stub, args)
+	if function == "readW" { //read a variable
+		return t.readW(stub, args)
 	}
 	fmt.Println("query did not find func: " + function)
 
@@ -244,7 +244,7 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
 	return nil, errors.New("Received unknown function invocation")
 }
 
-func (t* SimpleChaincode) Run(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+func (t *SimpleChaincode) Run(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 	fmt.Printf("Run called, passing through to Invoke (same function)")
 	
 	// Handle different functions
