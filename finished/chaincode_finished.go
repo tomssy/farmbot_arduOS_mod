@@ -128,10 +128,10 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
 	} else if function == "create_farm" { //create a new trade order
 		return t.create_farm(stub, args)
 	} else if function == "create_insurance" { //forfill an open trade order
-	//	t.create_insurance(stub, args)
+		//	t.create_insurance(stub, args)
 		fmt.Println("create_insurance")
 	} else if function == "update_weather" { //cancel an open trade order
-	//	return t.update_weather(stub, args)
+		//	return t.update_weather(stub, args)
 		fmt.Println("update weather")
 	}
 	fmt.Println("invoke did not find func: " + function) //error
@@ -305,7 +305,7 @@ func (t *SimpleChaincode) create_user(stub shim.ChaincodeStubInterface, args []s
 // Set User Permission on Marble
 // ============================================================================================================================
 func (t *SimpleChaincode) create_farm(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
-var err error
+	var err error
 
 	//   0       1       2     3                4
 	//  'name'   'addre' 'own'  'weathername'  Temperature
@@ -328,35 +328,34 @@ var err error
 		return nil, errors.New("2nd argument must be a non-empty string")
 	}
 	newfarm := Farm{}
-	newfarm.Name := strings.ToLower(args[0])
-	newfarm.Address := strings.ToLower(args[1])
-	newfarm.Owner := strings.ToLower(args[2])
-
+	name := strings.ToLower(args[0])
+	newfarm.Name = strings.ToLower(args[0])
+	newfarm.Address = strings.ToLower(args[1])
+	newfarm.Owner = strings.ToLower(args[2])
 
 	fmt.Println("- create new farm")
 	jsonAsBytes, _ := json.Marshal(newfarm)
 	err = stub.PutState("_debug1", jsonAsBytes)
 
-	for i:=3; i < len(args); i++ {												//create and append each willing trade
-		Temperature, err := strconv.Atoi(args[i + 1])
+	for i := 3; i < len(args); i++ { //create and append each willing trade
+		Temperature, err := strconv.Atoi(args[i+1])
 		if err != nil {
-			msg := "is not a numeric string " + args[i + 1]
+			msg := "is not a numeric string " + args[i+1]
 			fmt.Println(msg)
 			return nil, errors.New(msg)
 		}
-		
+
 		Weather_now := Weather{}
 		Weather_now.Name = args[i]
-		Weather.Temperature =  Temperature
+		Weather_now.Temperature = Temperature
 		fmt.Println("! created weather: " + args[i])
 		jsonAsBytes, _ = json.Marshal(Weather_now)
 		err = stub.PutState("_debug2", jsonAsBytes)
-		
+
 		newfarm.WeatherIndex = append(newfarm.WeatherIndex, Weather_now)
 		fmt.Println("! appended willing to open")
-		i++;
+		i++
 	}
-	
 
 	//check if farm already exists
 	FarmAsBytes, err := stub.GetState(name)
@@ -371,7 +370,7 @@ var err error
 		return nil, errors.New("This farm arleady exists") //all stop a user by this name exists
 	}
 
-	newfarmAsBytes, _ = json.Marshal(newfarm)
+	newfarmAsBytes, _ := json.Marshal(newfarm)
 	stub.PutState(name, newfarmAsBytes)
 	//get the marble index
 	FarmAsBytes, err := stub.GetState(FarmWeatherIndexStr)
@@ -389,7 +388,6 @@ var err error
 	return nil, nil
 }
 
-
 func makeTimestamp() int64 {
-    return time.Now().UnixNano() / (int64(time.Millisecond)/int64(time.Nanosecond))
+	return time.Now().UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond))
 }
