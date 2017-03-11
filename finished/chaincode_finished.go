@@ -1,28 +1,12 @@
-/*
-Licensed to the Apache Software Foundation (ASF) under one
-or more contributor license agreements.  See the NOTICE file
-distributed with this work for additional information
-regarding copyright ownership.  The ASF licenses this file
-to you under the Apache License, Version 2.0 (the
-"License"); you may not use this file except in compliance
-with the License.  You may obtain a copy of the License at
-
-  http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing,
-software distributed under the License is distributed on an
-"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-KIND, either express or implied.  See the License for the
-specific language governing permissions and limitations
-under the License.
-*/
-
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 )
@@ -30,277 +14,377 @@ import (
 // SimpleChaincode example simple Chaincode implementation
 type SimpleChaincode struct {
 }
-func (t *SimpleChaincode) InitW(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
-	if len(args) != 1 {
-		return nil, errors.New("Incorrect number of arguments. Expecting 1")
-	}
 
-	err := stub.PutState("orig_test", []byte(args[0]))
-	if err != nil {
-		return nil, err
-	}
+var FarmWeatherIndexStr = "_farmindex"    //name for the key/value that will store a list of all known marbles
+var ActiveInsuranceStr = "_openinsurance" //name for the key/value that will store all open trades
+var UserIndexStr = "_userindex"
 
-	return nil, nil
+type Weather struct {
+	Name        string `json:"name"`        // rainy sunny cloudy
+	Temperature int    `json:"temperature"` // -274 C - max int
 }
 
-// Invoke isur entry point to invoke a chaincode function
-func (t *SimpleChaincode) InvokeW(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
-	fmt.Println("invoke is running " + function)
-
-	// Handle different functions
-	if function == "initW" {
-		return t.InitW(stub, "initW", args)
-	} else if function == "writeW" {
-		return t.writeW(stub, args)
-	}
-	fmt.Println("invoke did not find func: " + function)
-
-	return nil, errors.New("Received unknown function invocation: " + function)
+type Farm struct {
+	Name         string    `json:"name"` //the fieldtags are needed to keep case from bouncing around
+	Address      string    `json:"address"`
+	Owner        string    `json:"owner"`
+	WeatherIndex []Weather `json:"weather_index"`
 }
 
-// Query is our entry point for queries
-func (t *SimpleChaincode) QueryW(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
-	fmt.Println("query is running " + function)
-
-	// Handle different functions
-	if function == "readW" { //read a variable
-		return t.readW(stub, args)
-	}
-	fmt.Println("query did not find func: " + function)
-
-	return nil, errors.New("Received unknown function query: " + function)
+type User struct {
+	Name string `json:"name"`
+	Coin int    `json:"Coin"`
 }
 
-// write - invoke function to write key/value pair
-func (t *SimpleChaincode) writeW(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
-	var key, value string
-	var err error
-	fmt.Println("running write()")
-
-	if len(args) != 2 {
-		return nil, errors.New("Incorrect number of arguments. Expecting 2. name of the key and value to set")
-	}
-
-	key = args[0] //rename for funsies
-	value = args[1]
-	err = stub.PutState(key, []byte(value)) //write the variable into the chaincode state
-	if err != nil {
-		return nil, err
-	}
-	return nil, nil
+type AnInsurance struct { //when bad things happen the beneficiaries get coin = Number * Rate
+	Insurant      Farm   `json:"insurant"`      // who is the target we will protect
+	Beneficiaries User   `json:"beneficiaries"` // who will beneficial from this insurance
+	Timestamp     int64  `json:"timestamp"`     // when this insurance entry into force
+	Number        int    `json:"number"`        // Number of insured
+	Rate          int    `json:"rate"`          // decide how many coins beneficiaries will get.
+	State         string `json:"state"`
 }
 
-// read - query function to read key/value pair
-func (t *SimpleChaincode) readW(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
-	var key, jsonResp string
-	var err error
-
-	if len(args) != 1 {
-		return nil, errors.New("Incorrect number of arguments. Expecting name of the key to query")
-	}
-
-	key = args[0]
-	valAsbytes, err := stub.GetState(key)
-	if err != nil {
-		jsonResp = "{\"Error\":\"Failed to get state for " + key + "\"}"
-		return nil, errors.New(jsonResp)
-	}
-
-	return valAsbytes, nil
+type ActiveInsurance struct {
+	AllInsurance []AnInsurance `json:"all_insurance"`
 }
 
-func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
-	fmt.Printf("Init called, initializing chaincode")
-	
-	var A, B string    // Entities
-	var Aval, Bval int // Asset holdings
-	var err error
-
-	if len(args) != 4 {
-		return nil, errors.New("Incorrect number of arguments. Expecting 4")
-	}
-
-	// Initialize the chaincode
-	A = args[0]
-	Aval, err = strconv.Atoi(args[1])
-	if err != nil {
-		return nil, errors.New("Expecting integer value for asset holding")
-	}
-	B = args[2]
-	Bval, err = strconv.Atoi(args[3])
-	if err != nil {
-		return nil, errors.New("Expecting integer value for asset holding")
-	}
-	fmt.Printf("Aval = %d, Bval = %d\n", Aval, Bval)
-
-	// Write the state to the ledger
-	err = stub.PutState(A, []byte(strconv.Itoa(Aval)))
-	if err != nil {
-		return nil, err
-	}
-
-	err = stub.PutState(B, []byte(strconv.Itoa(Bval)))
-	if err != nil {
-		return nil, err
-	}
-
-	return nil, nil
-}
-
-// Transaction makes payment of X units from A to B
-func (t *SimpleChaincode) invoke(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
-	fmt.Printf("Running invoke")
-	
-	var A, B string    // Entities
-	var Aval, Bval int // Asset holdings
-	var X int          // Transaction value
-	var err error
-
-	if len(args) != 3 {
-		return nil, errors.New("Incorrect number of arguments. Expecting 3")
-	}
-
-	A = args[0]
-	B = args[1]
-
-	// Get the state from the ledger
-	// TODO: will be nice to have a GetAllState call to ledger
-	Avalbytes, err := stub.GetState(A)
-	if err != nil {
-		return nil, errors.New("Failed to get state")
-	}
-	if Avalbytes == nil {
-		return nil, errors.New("Entity not found")
-	}
-	Aval, _ = strconv.Atoi(string(Avalbytes))
-
-	Bvalbytes, err := stub.GetState(B)
-	if err != nil {
-		return nil, errors.New("Failed to get state")
-	}
-	if Bvalbytes == nil {
-		return nil, errors.New("Entity not found")
-	}
-	Bval, _ = strconv.Atoi(string(Bvalbytes))
-
-	// Perform the execution
-	X, err = strconv.Atoi(args[2])
-	Aval = Aval - X
-	Bval = Bval + X
-	fmt.Printf("Aval = %d, Bval = %d\n", Aval, Bval)
-
-	// Write the state back to the ledger
-	err = stub.PutState(A, []byte(strconv.Itoa(Aval)))
-	if err != nil {
-		return nil, err
-	}
-
-	err = stub.PutState(B, []byte(strconv.Itoa(Bval)))
-	if err != nil {
-		return nil, err
-	}
-
-	return nil, nil
-}
-
-// Deletes an entity from state
-func (t *SimpleChaincode) delete(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
-	fmt.Printf("Running delete")
-	
-	if len(args) != 1 {
-		return nil, errors.New("Incorrect number of arguments. Expecting 3")
-	}
-
-	A := args[0]
-
-	// Delete the key from the state in ledger
-	err := stub.DelState(A)
-	if err != nil {
-		return nil, errors.New("Failed to delete state")
-	}
-
-	return nil, nil
-}
-
-// Invoke callback representing the invocation of a chaincode
-// This chaincode will manage two accounts A and B and will transfer X units from A to B upon invoke
-func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
-	fmt.Printf("Invoke called, determining function")
-	
-	// Handle different functions
-	if function == "invoke" {
-		// Transaction makes payment of X units from A to B
-		fmt.Printf("Function is invoke")
-		return t.invoke(stub, args)
-	} else if function == "init" {
-		fmt.Printf("Function is init")
-		return t.Init(stub, function, args)
-	} else if function == "delete" {
-		// Deletes an entity from its state
-		fmt.Printf("Function is delete")
-		return t.delete(stub, args)
-	}
-
-	return nil, errors.New("Received unknown function invocation")
-}
-
-func (t *SimpleChaincode) Run(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
-	fmt.Printf("Run called, passing through to Invoke (same function)")
-	
-	// Handle different functions
-	if function == "invoke" {
-		// Transaction makes payment of X units from A to B
-		fmt.Printf("Function is invoke")
-		return t.invoke(stub, args)
-	} else if function == "init" {
-		fmt.Printf("Function is init")
-		return t.Init(stub, function, args)
-	} else if function == "delete" {
-		// Deletes an entity from its state
-		fmt.Printf("Function is delete")
-		return t.delete(stub, args)
-	}
-
-	return nil, errors.New("Received unknown function invocation")
-}
-
-// Query callback representing the query of a chaincode
-func (t *SimpleChaincode) Query(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
-	fmt.Printf("Query called, determining function")
-	
-	if function != "query" {
-		fmt.Printf("Function is query")
-		return nil, errors.New("Invalid query function name. Expecting \"query\"")
-	}
-	var A string // Entities
-	var err error
-
-	if len(args) != 1 {
-		return nil, errors.New("Incorrect number of arguments. Expecting name of the person to query")
-	}
-
-	A = args[0]
-
-	// Get the state from the ledger
-	Avalbytes, err := stub.GetState(A)
-	if err != nil {
-		jsonResp := "{\"Error\":\"Failed to get state for " + A + "\"}"
-		return nil, errors.New(jsonResp)
-	}
-
-	if Avalbytes == nil {
-		jsonResp := "{\"Error\":\"Nil amount for " + A + "\"}"
-		return nil, errors.New(jsonResp)
-	}
-
-	jsonResp := "{\"Name\":\"" + A + "\",\"Amount\":\"" + string(Avalbytes) + "\"}"
-	fmt.Printf("Query Response:%s\n", jsonResp)
-	return Avalbytes, nil
-}
-
+// ============================================================================================================================
+// Main
+// ============================================================================================================================
 func main() {
 	err := shim.Start(new(SimpleChaincode))
 	if err != nil {
 		fmt.Printf("Error starting Simple chaincode: %s", err)
 	}
+}
+
+// ============================================================================================================================
+// Init - reset all the things
+// ============================================================================================================================
+func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+	var Aval int
+	var err error
+
+	if len(args) != 1 {
+		return nil, errors.New("Incorrect number of arguments. Expecting 1")
+	}
+
+	// Initialize the chaincode
+	Aval, err = strconv.Atoi(args[0])
+	if err != nil {
+		return nil, errors.New("Expecting integer value for asset holding")
+	}
+
+	// Write the state to the ledger
+	err = stub.PutState("abc", []byte(strconv.Itoa(Aval))) //making a test var "abc", I find it handy to read/write to it right away to test the network
+	if err != nil {
+		return nil, err
+	}
+
+	var empty []string
+	jsonAsBytes, _ := json.Marshal(empty) //marshal an emtpy array of strings to clear the index
+	err = stub.PutState(FarmWeatherIndexStr, jsonAsBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	var empty []string
+	jsonAsBytes, _ := json.Marshal(empty) //marshal an emtpy array of strings to clear the index
+	err = stub.PutState(UserIndexStr, jsonAsBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	var insurances ActiveInsurance
+	jsonAsBytes, _ = json.Marshal(insurances) //clear the open trade struct
+	err = stub.PutState(ActiveInsuranceStr, jsonAsBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return nil, nil
+}
+
+// ============================================================================================================================
+// Run - Our entry point for Invocations - [LEGACY] obc-peer 4/25/2016
+// ============================================================================================================================
+func (t *SimpleChaincode) Run(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+	fmt.Println("run is running " + function)
+	return t.Invoke(stub, function, args)
+}
+
+// ============================================================================================================================
+// Invoke - Our entry point for Invocations
+// ============================================================================================================================
+func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+	fmt.Println("invoke is running " + function)
+
+	// Handle different functions
+	if function == "init" { //initialize the chaincode state, used as reset
+		return t.Init(stub, "init", args)
+	} else if function == "write" { //writes a value to the chaincode state
+		return t.Write(stub, args)
+	} else if function == "create_user" { //create a new marble
+		return t.create_user(stub, args)
+	} else if function == "create_farm" { //create a new trade order
+		return t.create_farm(stub, args)
+	} else if function == "create_insurance" { //forfill an open trade order
+		t.create_insurance(stub, args)
+	} else if function == "update_weather" { //cancel an open trade order
+		return t.update_weather(stub, args)
+	}
+	fmt.Println("invoke did not find func: " + function) //error
+
+	return nil, errors.New("Received unknown function invocation")
+}
+
+// ============================================================================================================================
+// Query - Our entry point for Queries
+// ============================================================================================================================
+func (t *SimpleChaincode) Query(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+	fmt.Println("query is running " + function)
+
+	// Handle different functions
+	if function == "read" { //read a variable
+		return t.read(stub, args)
+	}
+	fmt.Println("query did not find func: " + function) //error
+
+	return nil, errors.New("Received unknown function query")
+}
+
+// ============================================================================================================================
+// Read - read a variable from chaincode state
+// ============================================================================================================================
+func (t *SimpleChaincode) read(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+	var name, jsonResp string
+	var err error
+
+	if len(args) != 1 {
+		return nil, errors.New("Incorrect number of arguments. Expecting name of the var to query")
+	}
+
+	name = args[0]
+	valAsbytes, err := stub.GetState(name) //get the var from chaincode state
+	if err != nil {
+		jsonResp = "{\"Error\":\"Failed to get state for " + name + "\"}"
+		return nil, errors.New(jsonResp)
+	}
+
+	return valAsbytes, nil //send it onward
+}
+
+// ============================================================================================================================
+// Delete - remove a key/value pair from state
+// ============================================================================================================================
+/*func (t *SimpleChaincode) Delete(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+	if len(args) != 1 {
+		return nil, errors.New("Incorrect number of arguments. Expecting 1")
+	}
+
+	name := args[0]
+	err := stub.DelState(name) //remove the key from chaincode state
+	if err != nil {
+		return nil, errors.New("Failed to delete state")
+	}
+
+	//get the marble index
+	marblesAsBytes, err := stub.GetState(marbleIndexStr)
+	if err != nil {
+		return nil, errors.New("Failed to get marble index")
+	}
+	var marbleIndex []string
+	json.Unmarshal(marblesAsBytes, &marbleIndex) //un stringify it aka JSON.parse()
+
+	//remove marble from index
+	for i, val := range marbleIndex {
+		fmt.Println(strconv.Itoa(i) + " - looking at " + val + " for " + name)
+		if val == name { //find the correct marble
+			fmt.Println("found marble")
+			marbleIndex = append(marbleIndex[:i], marbleIndex[i+1:]...) //remove it
+			for x := range marbleIndex {                                //debug prints...
+				fmt.Println(string(x) + " - " + marbleIndex[x])
+			}
+			break
+		}
+	}
+	jsonAsBytes, _ := json.Marshal(marbleIndex) //save new index
+	err = stub.PutState(marbleIndexStr, jsonAsBytes)
+	return nil, nil
+}
+*/
+// ============================================================================================================================
+// Write - write variable into chaincode state
+// ============================================================================================================================
+func (t *SimpleChaincode) Write(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+	var name, value string // Entities
+	var err error
+	fmt.Println("running write()")
+
+	if len(args) != 2 {
+		return nil, errors.New("Incorrect number of arguments. Expecting 2. name of the variable and value to set")
+	}
+
+	name = args[0] //rename for funsies
+	value = args[1]
+	err = stub.PutState(name, []byte(value)) //write the variable into the chaincode state
+	if err != nil {
+		return nil, err
+	}
+	return nil, nil
+}
+
+// ============================================================================================================================
+// Create User - create a new User,
+// ============================================================================================================================
+
+func (t *SimpleChaincode) create_user(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+	var err error
+
+	//   0       1       2     3
+	//  'name'   'money'
+	if len(args) != 2 {
+		return nil, errors.New("Incorrect number of arguments. Expecting 4")
+	}
+
+	//input sanitation
+	fmt.Println("- start create user")
+	if len(args[0]) <= 0 {
+		return nil, errors.New("1st argument must be a non-empty string")
+	}
+	if len(args[1]) <= 0 {
+		return nil, errors.New("2nd argument must be a non-empty string")
+	}
+
+	name := args[0]
+	coin, err := strconv.Atoi(args[1])
+	if err != nil {
+		return nil, errors.New("2rd argument must be a numeric string")
+	}
+
+	//check if marble already exists
+	UserAsBytes, err := stub.GetState(name)
+	if err != nil {
+		return nil, errors.New("Failed to get marble name")
+	}
+	res := User{}
+	json.Unmarshal(UserAsBytes, &res)
+	if res.Name == name {
+		fmt.Println("This user arleady exists: " + name)
+		fmt.Println(res)
+		return nil, errors.New("This user arleady exists") //all stop a user by this name exists
+	}
+
+	//build the user json string manually
+	str := `{"name": "` + name + `", "coin": ` + strconv.Itoa(size) + `"}`
+	err = stub.PutState(name, []byte(str)) //store marble with id as key
+	if err != nil {
+		return nil, err
+	}
+
+	//get the marble index
+	UserAsBytes, err := stub.GetState(UserIndexStr)
+	if err != nil {
+		return nil, errors.New("Failed to get marble index")
+	}
+	var UserIndex []string
+	json.Unmarshal(UserAsBytes, &UserIndex) //un stringify it aka JSON.parse()
+
+	//append
+	UserIndex = append(UserIndex, name) //add marble name to index list
+	fmt.Println("! User index: ", UserIndex)
+	jsonAsBytes, _ := json.Marshal(UserIndex)
+	err = stub.PutState(UserIndexStr, jsonAsBytes) //store name of marble
+
+	fmt.Println("- end create User")
+	return nil, nil
+}
+
+// ============================================================================================================================
+// Set User Permission on Marble
+// ============================================================================================================================
+func (t *SimpleChaincode) create_farm(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+var err error
+
+	//   0       1       2     3                4
+	//  'name'   'addre' 'own'  'weathername'  Temperature
+	if len(args) != 4 {
+		return nil, errors.New("Incorrect number of arguments. Expecting 4")
+	}
+
+	//input sanitation
+	fmt.Println("- start create farm")
+	if len(args[0]) <= 0 {
+		return nil, errors.New("1st argument must be a non-empty string")
+	}
+	if len(args[1]) <= 0 {
+		return nil, errors.New("2nd argument must be a non-empty string")
+	}
+	if len(args[2]) <= 0 {
+		return nil, errors.New("2nd argument must be a non-empty string")
+	}
+	if len(args[3]) <= 0 {
+		return nil, errors.New("2nd argument must be a non-empty string")
+	}
+	newfarm = Farm{}
+	newfarm.Name := args[0]
+	newfarm.Address := args[1]
+	newfarm.Owner := args[2]
+
+
+	fmt.Println("- create new farm")
+	jsonAsBytes, _ := json.Marshal(newfarm)
+	err = stub.PutState("_debug1", jsonAsBytes)
+
+	for i:=3; i < len(args); i++ {												//create and append each willing trade
+		Temperature, err = strconv.Atoi(args[i + 1])
+		if err != nil {
+			msg := "is not a numeric string " + args[i + 1]
+			fmt.Println(msg)
+			return nil, errors.New(msg)
+		}
+		
+		Weather_now = Weather{}
+		Weather_now.Name = args[i]
+		Weather.Temperature =  Temperature
+		fmt.Println("! created weather: " + args[i])
+		jsonAsBytes, _ = json.Marshal(Weather_now)
+		err = stub.PutState("_debug2", jsonAsBytes)
+		
+		newfarm.WeatherIndex = append(newfarm.WeatherIndex, Weather_now)
+		fmt.Println("! appended willing to open")
+		i++;
+	}
+	
+
+	//check if farm already exists
+	FarmAsBytes, err := stub.GetState(name)
+	if err != nil {
+		return nil, errors.New("Failed to get farm name")
+	}
+	res := Farm{}
+	json.Unmarshal(FarmAsBytes, &res)
+	if res.Name == name {
+		fmt.Println("This farm arleady exists: " + name)
+		fmt.Println(res)
+		return nil, errors.New("This farm arleady exists") //all stop a user by this name exists
+	}
+
+	jsonAsBytes, _ = json.Marshal(newfarm)
+	stub.PutState(name, jsonAsBytes)
+	//get the marble index
+	FarmAsBytes, err := stub.GetState(FarmWeatherIndexStr)
+	if err != nil {
+		return nil, errors.New("Failed to get marble index")
+	}
+	var FarmIndex []string
+	json.Unmarshal(FarmWeatherIndexStr, &FarmIndex) //un stringify it aka JSON.parse()
+	//append
+	FarmIndex = append(FarmIndex, name) //add marble name to index list
+	jsonAsBytes, _ := json.Marshal(FarmIndex)
+	err = stub.PutState(FarmWeatherIndexStr, jsonAsBytes) //store name of marble
+
+	fmt.Println("- end create User")
+	return nil, nil
 }
