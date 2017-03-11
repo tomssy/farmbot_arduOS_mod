@@ -277,7 +277,7 @@ func (t *SimpleChaincode) create_user(stub shim.ChaincodeStubInterface, args []s
 	}
 
 	//build the user json string manually
-	str := `{"name": "` + name + `", "coin": ` + strconv.Itoa(size) + `"}`
+	str := `{"name": "` + name + `", "coin": ` + strconv.Itoa(coin) + `"}`
 	err = stub.PutState(name, []byte(str)) //store marble with id as key
 	if err != nil {
 		return nil, err
@@ -327,7 +327,7 @@ var err error
 	if len(args[3]) <= 0 {
 		return nil, errors.New("2nd argument must be a non-empty string")
 	}
-	newfarm = Farm{}
+	newfarm := Farm{}
 	newfarm.Name := strings.ToLower(args[0])
 	newfarm.Address := strings.ToLower(args[1])
 	newfarm.Owner := strings.ToLower(args[2])
