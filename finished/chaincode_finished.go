@@ -89,8 +89,6 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string
 		return nil, err
 	}
 
-	var empty []string
-	jsonAsBytes, _ := json.Marshal(empty) //marshal an emtpy array of strings to clear the index
 	err = stub.PutState(UserIndexStr, jsonAsBytes)
 	if err != nil {
 		return nil, err
@@ -257,7 +255,7 @@ func (t *SimpleChaincode) create_user(stub shim.ChaincodeStubInterface, args []s
 		return nil, errors.New("2nd argument must be a non-empty string")
 	}
 
-	name := args[0]
+	name := strings.ToLower(args[0])
 	coin, err := strconv.Atoi(args[1])
 	if err != nil {
 		return nil, errors.New("2rd argument must be a numeric string")
@@ -328,9 +326,9 @@ var err error
 		return nil, errors.New("2nd argument must be a non-empty string")
 	}
 	newfarm = Farm{}
-	newfarm.Name := args[0]
-	newfarm.Address := args[1]
-	newfarm.Owner := args[2]
+	newfarm.Name := strings.ToLower(args[0])
+	newfarm.Address := strings.ToLower(args[1])
+	newfarm.Owner := strings.ToLower(args[2])
 
 
 	fmt.Println("- create new farm")
@@ -387,4 +385,9 @@ var err error
 
 	fmt.Println("- end create User")
 	return nil, nil
+}
+
+
+func makeTimestamp() int64 {
+    return time.Now().UnixNano() / (int64(time.Millisecond)/int64(time.Nanosecond))
 }
