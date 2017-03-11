@@ -128,9 +128,11 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
 	} else if function == "create_farm" { //create a new trade order
 		return t.create_farm(stub, args)
 	} else if function == "create_insurance" { //forfill an open trade order
-		t.create_insurance(stub, args)
+	//	t.create_insurance(stub, args)
+		fmt.Println("create_insurance")
 	} else if function == "update_weather" { //cancel an open trade order
-		return t.update_weather(stub, args)
+	//	return t.update_weather(stub, args)
+		fmt.Println("update weather")
 	}
 	fmt.Println("invoke did not find func: " + function) //error
 
@@ -282,12 +284,12 @@ func (t *SimpleChaincode) create_user(stub shim.ChaincodeStubInterface, args []s
 	}
 
 	//get the marble index
-	UserAsBytes, err := stub.GetState(UserIndexStr)
+	UsersAsBytes, err := stub.GetState(UserIndexStr)
 	if err != nil {
 		return nil, errors.New("Failed to get marble index")
 	}
 	var UserIndex []string
-	json.Unmarshal(UserAsBytes, &UserIndex) //un stringify it aka JSON.parse()
+	json.Unmarshal(UsersAsBytes, &UserIndex) //un stringify it aka JSON.parse()
 
 	//append
 	UserIndex = append(UserIndex, name) //add marble name to index list
@@ -369,8 +371,8 @@ var err error
 		return nil, errors.New("This farm arleady exists") //all stop a user by this name exists
 	}
 
-	jsonAsBytes, _ = json.Marshal(newfarm)
-	stub.PutState(name, jsonAsBytes)
+	newfarmAsBytes, _ = json.Marshal(newfarm)
+	stub.PutState(name, newfarmAsBytes)
 	//get the marble index
 	FarmAsBytes, err := stub.GetState(FarmWeatherIndexStr)
 	if err != nil {
@@ -380,8 +382,8 @@ var err error
 	json.Unmarshal(FarmWeatherIndexStr, &FarmIndex) //un stringify it aka JSON.parse()
 	//append
 	FarmIndex = append(FarmIndex, name) //add marble name to index list
-	jsonAsBytes, _ := json.Marshal(FarmIndex)
-	err = stub.PutState(FarmWeatherIndexStr, jsonAsBytes) //store name of marble
+	FarmsAsBytes, _ := json.Marshal(FarmIndex)
+	err = stub.PutState(FarmWeatherIndexStr, FarmsAsBytes) //store name of marble
 
 	fmt.Println("- end create User")
 	return nil, nil
