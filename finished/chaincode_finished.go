@@ -373,12 +373,13 @@ func (t *SimpleChaincode) create_farm(stub shim.ChaincodeStubInterface, args []s
 	newfarmAsBytes, _ := json.Marshal(newfarm)
 	stub.PutState(name, newfarmAsBytes)
 	//get the marble index
-	FarmAsBytes, err := stub.GetState(FarmWeatherIndexStr)
+	FarmAsBytes, err = stub.GetState(FarmWeatherIndexStr)
 	if err != nil {
 		return nil, errors.New("Failed to get marble index")
 	}
 	var FarmIndex []string
-	json.Unmarshal(FarmWeatherIndexStr, &FarmIndex) //un stringify it aka JSON.parse()
+	FarmWeatherStr := stub.GetState(FarmWeatherIndexStr)
+	json.Unmarshal(FarmWeatherStr, &FarmIndex) //un stringify it aka JSON.parse()
 	//append
 	FarmIndex = append(FarmIndex, name) //add marble name to index list
 	FarmsAsBytes, _ := json.Marshal(FarmIndex)
