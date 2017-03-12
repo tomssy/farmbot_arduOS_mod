@@ -468,9 +468,9 @@ func (t *SimpleChaincode) update_weather(stub shim.ChaincodeStubInterface, args 
 		json.Unmarshal(InsuranceAsBytes, &Insurances) //un stringify it aka JSON.parse()
 		bad_count := 0
 		wl := len(update_farm.WeatherIndex)
-		for i := wl-3; i < wl; i++ {
-			Weather := update_farm.WeatherIndex[i] 
-			if Weather. == "Rainy" {
+		for i := wl - 3; i < wl; i++ {
+			Weather := update_farm.WeatherIndex[i]
+			if Weather.Name == "Rainy" {
 				bad_count += 1
 			}
 			if Weather.Name == "Sunny" {
