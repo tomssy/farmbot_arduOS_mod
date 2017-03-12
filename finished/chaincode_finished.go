@@ -456,7 +456,7 @@ func (t *SimpleChaincode) update_weather(stub shim.ChaincodeStubInterface, args 
 	farmname := strings.ToLower(args[0])
 	farmAsByte, err := stub.GetState(farmname)
 	if err != nil {
-		return nil, "farm not exist"
+		return nil, errors.New("farm not exist")
 	}
 	var update_farm Farm
 	json.Unmarshal(farmAsByte, update_farm)
