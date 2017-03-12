@@ -176,45 +176,6 @@ func (t *SimpleChaincode) read(stub shim.ChaincodeStubInterface, args []string) 
 }
 
 // ============================================================================================================================
-// Delete - remove a key/value pair from state
-// ============================================================================================================================
-/*func (t *SimpleChaincode) Delete(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
-	if len(args) != 1 {
-		return nil, errors.New("Incorrect number of arguments. Expecting 1")
-	}
-
-	name := args[0]
-	err := stub.DelState(name) //remove the key from chaincode state
-	if err != nil {
-		return nil, errors.New("Failed to delete state")
-	}
-
-	//get the marble index
-	marblesAsBytes, err := stub.GetState(marbleIndexStr)
-	if err != nil {
-		return nil, errors.New("Failed to get marble index")
-	}
-	var marbleIndex []string
-	json.Unmarshal(marblesAsBytes, &marbleIndex) //un stringify it aka JSON.parse()
-
-	//remove marble from index
-	for i, val := range marbleIndex {
-		fmt.Println(strconv.Itoa(i) + " - looking at " + val + " for " + name)
-		if val == name { //find the correct marble
-			fmt.Println("found marble")
-			marbleIndex = append(marbleIndex[:i], marbleIndex[i+1:]...) //remove it
-			for x := range marbleIndex {                                //debug prints...
-				fmt.Println(string(x) + " - " + marbleIndex[x])
-			}
-			break
-		}
-	}
-	jsonAsBytes, _ := json.Marshal(marbleIndex) //save new index
-	err = stub.PutState(marbleIndexStr, jsonAsBytes)
-	return nil, nil
-}
-*/
-// ============================================================================================================================
 // Write - write variable into chaincode state
 // ============================================================================================================================
 func (t *SimpleChaincode) Write(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
@@ -302,17 +263,17 @@ func (t *SimpleChaincode) create_user(stub shim.ChaincodeStubInterface, args []s
 }
 
 // ============================================================================================================================
-// Set User Permission on Marble
+// create farm
 // ============================================================================================================================
 func (t *SimpleChaincode) create_farm(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	var err error
 
 	//   0       1       2     3                4
 	//  'name'   'addre' 'own'  'weathername'  Temperature
-	if len(args) != 4 {
-		return nil, errors.New("Incorrect number of arguments. Expecting 4")
+	if len(args) <= 4 {
+		return nil, errors.New("Incorrect number of arguments. Expecting >=4")
 	}
-
+	stub.PutState("start create farm", args[0])
 	//input sanitation
 	fmt.Println("- start create farm")
 	if len(args[0]) <= 0 {
@@ -329,7 +290,7 @@ func (t *SimpleChaincode) create_farm(stub shim.ChaincodeStubInterface, args []s
 	}
 	newfarm := Farm{}
 	name := strings.ToLower(args[0])
-	newfarm.Name = strings.ToLower(args[0])
+	newfarm.Name = name
 	newfarm.Address = strings.ToLower(args[1])
 	newfarm.Owner = strings.ToLower(args[2])
 
@@ -353,7 +314,7 @@ func (t *SimpleChaincode) create_farm(stub shim.ChaincodeStubInterface, args []s
 		err = stub.PutState("_debug2", jsonAsBytes)
 
 		newfarm.WeatherIndex = append(newfarm.WeatherIndex, Weather_now)
-		fmt.Println("! appended willing to open")
+		fmt.Println("! appended weather")
 		i++
 	}
 
@@ -362,6 +323,7 @@ func (t *SimpleChaincode) create_farm(stub shim.ChaincodeStubInterface, args []s
 	if err != nil {
 		return nil, errors.New("Failed to get farm name")
 	}
+
 	res := Farm{}
 	json.Unmarshal(FarmAsBytes, &res)
 	if res.Name == name {
@@ -382,8 +344,8 @@ func (t *SimpleChaincode) create_farm(stub shim.ChaincodeStubInterface, args []s
 	json.Unmarshal(FarmAsBytes, &FarmIndex) //un stringify it aka JSON.parse()
 	//append
 	FarmIndex = append(FarmIndex, name) //add marble name to index list
-	FarmsAsBytes, _ := json.Marshal(FarmIndex)
-	err = stub.PutState(FarmWeatherIndexStr, FarmsAsBytes) //store name of marble
+	FarmAsBytes, _ = json.Marshal(FarmIndex)
+	err = stub.PutState(FarmWeatherIndexStr, FarmAsBytes) //store name of marble
 
 	fmt.Println("- end create User")
 	return nil, nil
