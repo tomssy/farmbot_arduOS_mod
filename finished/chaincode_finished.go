@@ -463,7 +463,7 @@ func (t *SimpleChaincode) update_weather(stub shim.ChaincodeStubInterface, args 
 	update_farm.WeatherIndex = append(update_farm.WeatherIndex, Weather_now)
 	farmAsByte, err = json.Marshal(update_farm)
 	if err != nil {
-		return nil, "farm marshal fail"
+		return nil, errors.New("farm marshal fail")
 	}
 	stub.PutState(farmname, farmAsByte)
 
