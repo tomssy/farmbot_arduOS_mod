@@ -355,8 +355,6 @@ func makeTimestamp() int64 {
 	return time.Now().UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond))
 }
 
-
-
 // ============================================================================================================================
 // Create User - create a new User,
 // ============================================================================================================================
@@ -365,7 +363,7 @@ func (t *SimpleChaincode) create_insurance(stub shim.ChaincodeStubInterface, arg
 	var err error
 
 	//   0       1       2     3
-	//  'insurant'   'beneficial' 'Number' 'rate' 'state' 
+	//  'insurant'   'beneficial' 'Number' 'rate' 'state'
 	if len(args) != 5 {
 		return nil, errors.New("Incorrect number of arguments. Expecting 5")
 	}
@@ -394,13 +392,12 @@ func (t *SimpleChaincode) create_insurance(stub shim.ChaincodeStubInterface, arg
 	if err != nil {
 		return nil, errors.New("3rd argument must be a numeric string")
 	}
-	new_insurance.Rate, err := strconv.Atoi(args[3])
-		if err != nil {
+	new_insurance.Rate, err = strconv.Atoi(args[3])
+	if err != nil {
 		return nil, errors.New("4rd argument must be a numeric string")
 	}
 	new_insurance.State = strings.ToLower(args[4])
 	new_insurance.Timestamp = makeTimestamp()
-	
 
 	//get the marble index
 	InsuranceAsBytes, err := stub.GetState(ActiveInsuranceStr)
@@ -418,5 +415,3 @@ func (t *SimpleChaincode) create_insurance(stub shim.ChaincodeStubInterface, arg
 	fmt.Println("- end create User")
 	return nil, nil
 }
-
-
