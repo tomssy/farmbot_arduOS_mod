@@ -521,6 +521,5 @@ func (t *SimpleChaincode) update_weather(stub shim.ChaincodeStubInterface, args 
 		InsuranceAsBytes, err = json.Marshal(Insurances)
 		stub.PutState(ActiveInsuranceStr, InsuranceAsBytes)
 	}
-
 	return nil, nil
 }
