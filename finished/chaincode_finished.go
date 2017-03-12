@@ -128,7 +128,7 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
 	} else if function == "create_farm" { //create a new trade order
 		return t.create_farm(stub, args)
 	} else if function == "create_insurance" { //forfill an open trade order
-		t.create_insurance(stub, args)
+		return t.create_insurance(stub, args)
 		fmt.Println("create_insurance")
 	} else if function == "update_weather" { //cancel an open trade order
 		//	return t.update_weather(stub, args)
