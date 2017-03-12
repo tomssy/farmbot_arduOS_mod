@@ -488,10 +488,10 @@ func (t *SimpleChaincode) update_weather(stub shim.ChaincodeStubInterface, args 
 		wl := len(update_farm.WeatherIndex)
 		for i := wl - 3; i < wl; i++ {
 			Weather := update_farm.WeatherIndex[i]
-			if Weather.Name == "Rainy" {
+			if Weather.Name == "rainy" {
 				bad_count += 1
 			}
-			if Weather.Name == "Sunny" {
+			if Weather.Name == "sunny" {
 				bad_count = 0
 			}
 		}
