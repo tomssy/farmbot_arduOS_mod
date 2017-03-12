@@ -458,8 +458,9 @@ func (t *SimpleChaincode) update_weather(stub shim.ChaincodeStubInterface, args 
 	if err != nil {
 		return nil, errors.New("farm not exist")
 	}
+
 	var update_farm Farm
-	json.Unmarshal(farmAsByte, update_farm)
+	json.Unmarshal(farmAsByte, &update_farm)
 
 	jsonAsBytes, _ = json.Marshal(update_farm.WeatherIndex)
 
@@ -505,7 +506,7 @@ func (t *SimpleChaincode) update_weather(stub shim.ChaincodeStubInterface, args 
 					if err != nil {
 						return nil, errors.New("user don't exist")
 					}
-					json.Unmarshal(userAsByte, user)
+					json.Unmarshal(userAsByte, &user)
 					user.Coin += benefit
 					userAsByte, err = json.Marshal(user)
 					stub.PutState(username, userAsByte)
