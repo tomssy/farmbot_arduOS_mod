@@ -238,8 +238,11 @@ func (t *SimpleChaincode) create_user(stub shim.ChaincodeStubInterface, args []s
 	}
 
 	//build the user json string manually
-	str := `{"name": "` + name + `", "coin": ` + strconv.Itoa(coin) + `"}`
-	err = stub.PutState(name, []byte(str)) //store marble with id as key
+	var user User
+	user.Name = name
+	user.Coin = strconv.Itoa(coin)
+	UserAsBytes, err = json.Marshal(user)
+	err = stub.PutState(name, UserAsBytes) //store marble with id as key
 	if err != nil {
 		return nil, err
 	}
