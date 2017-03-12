@@ -467,7 +467,7 @@ func (t *SimpleChaincode) update_weather(stub shim.ChaincodeStubInterface, args 
 		InsuranceAsBytes := stub.GetState(ActiveInsuranceStr)
 		json.Unmarshal(InsuranceAsBytes, &Insurances) //un stringify it aka JSON.parse()
 		bad_count := 0
-		for Weather range update_farm.WeatherIndex[-3:]{
+		for Weather := range update_farm.WeatherIndex[-3:]{
 			if Weather.Name == "Rainy" {
 				bad_count += 1
 			}
@@ -481,10 +481,14 @@ func (t *SimpleChaincode) update_weather(stub shim.ChaincodeStubInterface, args 
 					Insurances.AllInsurance[i].State = "solved"
 					benefit := val.Number * val.Rate
 					username := val.Beneficiaries
-					user, err := stub.GetState(username)
+					var user User
+					user, err = stub.GetState(username)
 					if err != nil {
 						return nil, errors.New("user don't exist")
 					}					
+					user.Coin += benefit
+					stub.PutState(username, user)
+					
 
 				}
 			}
