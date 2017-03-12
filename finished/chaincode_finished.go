@@ -273,7 +273,7 @@ func (t *SimpleChaincode) create_farm(stub shim.ChaincodeStubInterface, args []s
 	if len(args) <= 4 {
 		return nil, errors.New("Incorrect number of arguments. Expecting >=4")
 	}
-	stub.PutState("start create farm", args[0])
+	stub.PutState("start create farm", strings.ToLower(args[0]))
 	//input sanitation
 	fmt.Println("- start create farm")
 	if len(args[0]) <= 0 {
