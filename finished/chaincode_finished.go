@@ -385,6 +385,7 @@ func (t *SimpleChaincode) create_insurance(stub shim.ChaincodeStubInterface, arg
 	if len(args[4]) <= 0 {
 		return nil, errors.New("2nd argument must be a non-empty string")
 	}
+
 	new_insurance := AnInsurance{}
 	new_insurance.Insurant = strings.ToLower(args[0])
 	new_insurance.Beneficiaries = strings.ToLower(args[1])
@@ -398,6 +399,9 @@ func (t *SimpleChaincode) create_insurance(stub shim.ChaincodeStubInterface, arg
 	}
 	new_insurance.State = strings.ToLower(args[4])
 	new_insurance.Timestamp = makeTimestamp()
+
+	jsonAsBytes, _ := json.Marshal(new_insurance)
+	err = stub.PutState("_debug1", jsonAsBytes)
 
 	//get the marble index
 	InsuranceAsBytes, err := stub.GetState(ActiveInsuranceStr)
