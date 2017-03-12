@@ -131,7 +131,7 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
 		return t.create_insurance(stub, args)
 		fmt.Println("create_insurance")
 	} else if function == "update_weather" { //cancel an open trade order
-		//	return t.update_weather(stub, args)
+		return t.update_weather(stub, args)
 		fmt.Println("update weather")
 	}
 	fmt.Println("invoke did not find func: " + function) //error
@@ -417,5 +417,82 @@ func (t *SimpleChaincode) create_insurance(stub shim.ChaincodeStubInterface, arg
 	err = stub.PutState(ActiveInsuranceStr, InsuranceAsBytes) //store name of marble
 
 	fmt.Println("- end create User")
+	return nil, nil
+}
+
+func (t *SimpleChaincode) update_weather(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+	var err error
+
+	//   0       1       2     3
+	//  'farm_name'   'weather type' 'Temperature'
+	if len(args) != 3 {
+		return nil, errors.New("Incorrect number of arguments. Expecting 5")
+	}
+
+	//input sanitation
+	fmt.Println("- start create user")
+	if len(args[0]) <= 0 {
+		return nil, errors.New("1st argument must be a non-empty string")
+	}
+	if len(args[1]) <= 0 {
+		return nil, errors.New("2nd argument must be a non-empty string")
+	}
+	if len(args[2]) <= 0 {
+		return nil, errors.New("2nd argument must be a non-empty string")
+	}
+
+	Temperature, err := strconv.Atoi(args[2])
+	if err != nil {
+		msg := "is not a numeric string " + args[2]
+		fmt.Println(msg)
+		return nil, errors.New(msg)
+	}
+	Weather_now := Weather{}
+	Weather_now.Name = args[1]
+	Weather_now.Temperature = Temperature
+
+	jsonAsBytes, _ = json.Marshal(Weather_now)
+	err = stub.PutState("_debug2", jsonAsBytes)
+	farmname := strings.ToLower(args[0])
+	farmAsByte, err := stub.GetState(farmname)
+	var update_farm Farm
+	json.Unmarshal(farmAsByte, update_farm)
+	update_farm.WeatherIndex = append(update_farm.WeatherIndex, Weather_now)
+	farmAsByte = json.Marshal(update_farm)
+	stub.PutState(farmname, farmAsByte)
+
+	//check if terrible weather
+	if len(update_farm.WeatherIndex) >= 3 {
+		var Insurances ActiveInsurance
+		InsuranceAsBytes := stub.GetState(ActiveInsuranceStr)
+		json.Unmarshal(InsuranceAsBytes, &Insurances) //un stringify it aka JSON.parse()
+		bad_count := 0
+		for Weather range update_farm.WeatherIndex[-3:]{
+			if Weather.Name == "Rainy" {
+				bad_count += 1
+			}
+			if Weather.Name == "Sunny"{
+				bad_count = 0
+			}
+		}
+		if bad_count >= 3 {
+			for i, val := range Insurances.AllInsurance {
+				if val.State == "actived" && val.Insurant == farmname {
+					Insurances.AllInsurance[i].State = "solved"
+					benefit := val.Number * val.Rate
+					username := val.Beneficiaries
+					user, err := stub.GetState(username)
+					if err != nil {
+						return nil, errors.New("user don't exist")
+					}					
+
+				}
+			}
+		}
+
+		InsuranceAsBytes = json.Marshal(Insurances)
+		stub.PutState(ActiveInsuranceStr, InsuranceAsBytes)
+	}
+		
 	return nil, nil
 }
