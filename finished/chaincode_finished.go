@@ -413,12 +413,10 @@ func (t *SimpleChaincode) create_insurance(stub shim.ChaincodeStubInterface, arg
 	}
 	var Insurances ActiveInsurance
 	json.Unmarshal(InsuranceAsBytes, &Insurances) //un stringify it aka JSON.parse()
-
 	//append
-	Insurances.AllInsurance = append(Insurances.AllInsurance, new_insurance) //add marble name to index list
+	Insurances.AllInsurance = append(Insurances.AllInsurance, new_insurance)
 	InsuranceAsBytes, _ = json.Marshal(Insurances)
-	err = stub.PutState(ActiveInsuranceStr, InsuranceAsBytes) //store name of marble
-
+	err = stub.PutState(ActiveInsuranceStr, InsuranceAsBytes)
 	fmt.Println("- end create User")
 	return nil, nil
 }
@@ -521,5 +519,6 @@ func (t *SimpleChaincode) update_weather(stub shim.ChaincodeStubInterface, args 
 		InsuranceAsBytes, err = json.Marshal(Insurances)
 		stub.PutState(ActiveInsuranceStr, InsuranceAsBytes)
 	}
+
 	return nil, nil
 }
