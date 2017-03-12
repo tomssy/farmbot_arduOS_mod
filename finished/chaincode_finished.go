@@ -501,14 +501,14 @@ func (t *SimpleChaincode) update_weather(stub shim.ChaincodeStubInterface, args 
 					Insurances.AllInsurance[i].State = "solved"
 					benefit := val.Number * val.Rate
 					username := val.Beneficiaries
-					var user User
+					var lucky_dog User
 					userAsByte, err := stub.GetState(username)
 					if err != nil {
 						return nil, errors.New("user don't exist")
 					}
-					json.Unmarshal(userAsByte, &user)
-					user.Coin += benefit
-					userAsByte, err = json.Marshal(user)
+					json.Unmarshal(userAsByte, &lucky_dog)
+					lucky_dog.Coin = lucky_dog.Coin + benefit
+					userAsByte, err = json.Marshal(lucky_dog)
 					stub.PutState(username, userAsByte)
 
 				}
