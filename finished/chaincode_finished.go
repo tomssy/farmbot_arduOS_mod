@@ -465,6 +465,9 @@ func (t *SimpleChaincode) update_weather(stub shim.ChaincodeStubInterface, args 
 	if len(update_farm.WeatherIndex) >= 3 {
 		var Insurances ActiveInsurance
 		InsuranceAsBytes, err := stub.GetState(ActiveInsuranceStr)
+		if err != nil {
+			return nil, errors.New("insurance get error")
+		}
 		json.Unmarshal(InsuranceAsBytes, &Insurances) //un stringify it aka JSON.parse()
 		bad_count := 0
 		wl := len(update_farm.WeatherIndex)
